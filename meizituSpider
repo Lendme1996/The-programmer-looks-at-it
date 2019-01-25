@@ -1,0 +1,91 @@
+import re
+from bs4 import BeautifulSoup
+import requests
+import os
+from lxml import etree
+from requests import RequestException
+from jiepaiBase import *
+from threading import Thread
+
+Hostreferer = {
+    'User-Agent': 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)',
+    'Referer': 'http://www.mzitu.com'
+}
+Picreferer = {
+    'User-Agent': 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)',
+    'Referer': 'http://i.meizitu.net'
+}
+
+def get_page_index(url):
+    ret = requests.get(url, headers=Hostreferer)
+    try:
+        if ret.status_code == 200:
+            return ret.text
+        return None
+    except RequestException:
+        print('主页请求错误')
+        return None
+
+def parse_home_html(html):
+    if html:
+        #<li><a href="(.*?)".*?alt='(.*?)'.*?class="time">(.*?)</span>.*?class="view">(.*?)</span></li>
+        msgs = re.compile('''<li><a href="(.*?)"''', re.S)
+        result = re.findall(msgs, html)
+        for msg in result:
+            yield msg
+
+def get_details_url(url):
+    ret = requests.get(url, headers=Hostreferer)
+    try:
+        if ret.status_code == 200:
+            return ret.text
+        return None
+    except RequestException:
+        print('详情页请求错误')
+        return None
+
+def parse_details_html(html):
+    soup = BeautifulSoup(html, 'lxml')
+    span = soup.findAll('span')[10].text
+    title = soup.find('h2', class_="main-title").text
+    return span, title
+
+def get_image_details(span, url, title):
+    os.makedirs("/Users/qiuyouhao/Desktop/pySpider/douban/meizituSpider/妹子图/" + title)
+    print('正在写入{}图集'.format(title))
+    for i in range(1, int(span)+1):
+        image_url = url + '/' + str(i)
+        ret = requests.get(image_url, headers=image_url_user_agent)
+        html = ret.text
+        parse_html = etree.HTML(html)
+        image_url = parse_html.xpath('//div[@class="main-image"]/p/a/img/@src')
+        for images in image_url:
+            ret = requests.get(images, headers=Picreferer)
+            image = images[-10:]
+            if ret.content:
+                with open("/Users/qiuyouhao/Desktop/pySpider/douban/meizituSpider/妹子图/" + title + '/' + image, 'wb') as f:
+                    print('正在写入{}张图片'.format(i))
+                    f.write(ret.content)
+
+def main(species, page):
+    home_url = "https://www.mzitu.com/{}/page/{}/".format(species, page)
+    html = get_page_index(home_url)
+    for url in parse_home_html(html):
+        deatils_html = get_details_url(url)
+        span, title = parse_details_html(deatils_html)
+        get_image_details(span, url, title)
+
+if __name__ == '__main__':
+    start_l = [('性感', 'xinggan'), ('日本', 'japan',),
+               ('台湾', 'taiwan',), ('清纯', 'mm',), ]
+    for index, item in enumerate(start_l, 1):
+        print(index, item[0])
+    while True:
+        try:
+            num = int(input('>>>'))
+            species = start_l[num-1][1]
+            for i in range(1, 2000):
+                Thread(target=main, args=(species, i)).start()
+            break
+        except:
+            print('你输入的有误')
