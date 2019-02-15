@@ -4,7 +4,6 @@ import requests
 import os
 from lxml import etree
 from requests import RequestException
-from jiepaiBase import *
 from threading import Thread
 
 Hostreferer = {
@@ -51,11 +50,11 @@ def parse_details_html(html):
     return span, title
 
 def get_image_details(span, url, title):
-    os.makedirs("/Users/qiuyouhao/Desktop/pySpider/douban/meizituSpider/妹子图/" + title)
+    os.makedirs("./meizituSpider/妹子图/" + title)
     print('正在写入{}图集'.format(title))
     for i in range(1, int(span)+1):
         image_url = url + '/' + str(i)
-        ret = requests.get(image_url, headers=image_url_user_agent)
+        ret = requests.get(image_url, headers=image_Hostreferer)
         html = ret.text
         parse_html = etree.HTML(html)
         image_url = parse_html.xpath('//div[@class="main-image"]/p/a/img/@src')
@@ -63,7 +62,7 @@ def get_image_details(span, url, title):
             ret = requests.get(images, headers=Picreferer)
             image = images[-10:]
             if ret.content:
-                with open("/Users/qiuyouhao/Desktop/pySpider/douban/meizituSpider/妹子图/" + title + '/' + image, 'wb') as f:
+                with open("./meizituSpider/妹子图/" + title + '/' + image, 'wb') as f:
                     print('正在写入{}张图片'.format(i))
                     f.write(ret.content)
 
